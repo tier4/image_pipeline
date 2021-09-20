@@ -194,17 +194,53 @@ def _get_circles(img, board, pattern):
     else:
         mono = img
 
+    # Setting blob detector
+    params = cv2.SimpleBlobDetector_Params()
+    params.filterByArea = True
+    params.minArea = 500
+    params.maxArea = 30000
+    params.minDistBetweenBlobs = 20
+    params.filterByColor = True
+    params.blobColor = 0
+    params.filterByConvexity = False
+    params.minCircularity = 0.1
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.01
+    detector = cv2.SimpleBlobDetector_create(params)
+
+    # Scaling for high-resolution image
+    # NOTE: CirclesGridFinderParameters cannot be modified in OpenCV 3.x
+    scale = 1.0
+    width = mono.shape[1]
+    max_width = 1440.
+    if width > max_width:
+        scale = max_width / width
+        mono = cv2.resize(mono, None, fx=scale, fy=scale)
+
+    # Visualize blob detection
+    # keypoints = detector.detect(mono)
+    # mono_with_keypoints = cv2.drawKeypoints(
+    #     mono, keypoints, numpy.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    # cv2.imshow("blob", mono_with_keypoints)
+
+
     flag = cv2.CALIB_CB_SYMMETRIC_GRID
     if pattern == Patterns.ACircles:
         flag = cv2.CALIB_CB_ASYMMETRIC_GRID
     mono_arr = numpy.array(mono)
-    (ok, corners) = cv2.findCirclesGrid(mono_arr, (board.n_cols, board.n_rows), flags=flag)
+    (ok, corners) = cv2.findCirclesGrid(
+        mono_arr, (board.n_cols, board.n_rows), flags=flag, blobDetector=detector)
 
     # In symmetric case, findCirclesGrid does not detect the target if it's turned sideways. So we try
     # again with dimensions swapped - not so efficient.
     # TODO Better to add as second board? Corner ordering will change.
     if not ok and pattern == Patterns.Circles:
-        (ok, corners) = cv2.findCirclesGrid(mono_arr, (board.n_rows, board.n_cols), flags=flag)
+        (ok, corners) = cv2.findCirclesGrid(
+            mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
+
+    if ok:
+        # Re-scaling results
+        corners = corners * (1. / scale )
 
     return (ok, corners)
 
