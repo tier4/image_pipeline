@@ -194,17 +194,53 @@ def _get_circles(img, board, pattern):
     else:
         mono = img
 
+    # Setting blob detector
+    params = cv2.SimpleBlobDetector_Params()
+    params.filterByArea = True
+    params.minArea = 500
+    params.maxArea = 30000
+    params.minDistBetweenBlobs = 20
+    params.filterByColor = True
+    params.blobColor = 0
+    params.filterByConvexity = False
+    params.minCircularity = 0.1
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.01
+    detector = cv2.SimpleBlobDetector_create(params)
+
+    # Scaling for high-resolution image
+    # NOTE: CirclesGridFinderParameters cannot be modified in OpenCV 3.x
+    scale = 1.0
+    width = mono.shape[1]
+    max_width = 1440.
+    if width > max_width:
+        scale = max_width / width
+        mono = cv2.resize(mono, None, fx=scale, fy=scale)
+
+    # Visualize blob detection
+    # keypoints = detector.detect(mono)
+    # mono_with_keypoints = cv2.drawKeypoints(
+    #     mono, keypoints, numpy.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    # cv2.imshow("blob", mono_with_keypoints)
+
+
     flag = cv2.CALIB_CB_SYMMETRIC_GRID
     if pattern == Patterns.ACircles:
         flag = cv2.CALIB_CB_ASYMMETRIC_GRID
     mono_arr = numpy.array(mono)
-    (ok, corners) = cv2.findCirclesGrid(mono_arr, (board.n_cols, board.n_rows), flags=flag)
+    (ok, corners) = cv2.findCirclesGrid(
+        mono_arr, (board.n_cols, board.n_rows), flags=flag, blobDetector=detector)
 
     # In symmetric case, findCirclesGrid does not detect the target if it's turned sideways. So we try
     # again with dimensions swapped - not so efficient.
     # TODO Better to add as second board? Corner ordering will change.
     if not ok and pattern == Patterns.Circles:
-        (ok, corners) = cv2.findCirclesGrid(mono_arr, (board.n_rows, board.n_cols), flags=flag)
+        (ok, corners) = cv2.findCirclesGrid(
+            mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
+
+    if ok:
+        # Re-scaling results
+        corners = corners * (1. / scale )
 
     return (ok, corners)
 
@@ -306,6 +342,36 @@ class Calibrator():
     def compute_goodenough(self):
         if not self.db:
             return None
+
+        cell_size = 0.05
+        grid = numpy.zeros([int(math.ceil(1.0/cell_size)),
+                            int(math.ceil(1.0/cell_size))], numpy.int64)
+        image_width = self.image_shape[1]
+        image_height = self.image_shape[0]
+        for samples in self.good_corners:
+            for pts in samples[0]:
+                x = int(pts[0, 0]/image_width/cell_size)
+                y = int(pts[0, 1]/image_height/cell_size)
+                grid[y, x] += 1
+        n = numpy.count_nonzero(grid > 0)
+        occupied = float(n) / (grid.shape[0] * grid.shape[1])
+
+        img_width = 500
+        img_height = 500
+
+        img = numpy.zeros([img_height, img_width], numpy.uint8)
+        for y in range(grid.shape[0]):
+            for x in range(grid.shape[1]):
+                cv2.rectangle(img, (int(x*img_width*cell_size), int(y*img_height*cell_size)),
+                              (int((x+1)*img_width*cell_size), int((y+1)*img_height*cell_size)), min(255, grid[y, x]*20), -1)
+        img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        for sample in self.good_corners:
+            for p in sample[0]:
+                cv2.circle(img, (int(p[0, 0]/float(image_width)*img_width),
+                                 int(p[0, 1]/float(image_height)*img_height)), 2, (0, 0, 0), -1)
+        cv2.putText(img, "covered = {:3.1f}%".format(
+            occupied*100), (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.imshow("occupied", img)
 
         # Find range of checkerboard poses covered by samples in database
         all_params = [sample[0] for sample in self.db]
@@ -614,6 +680,43 @@ class MonoCalibrator(Calibrator):
                    self.distortion,
                    flags = self.calib_flags)
 
+        aspect = self.size[1]/float(self.size[0])
+        iw = 500
+        ih = int(500*aspect)
+        img = numpy.zeros([ih, iw], numpy.uint8)
+        error_grid = numpy.zeros([20, 20], numpy.float32)
+        w = self.size[1] / 20.0
+        h = self.size[0] / 20.0
+        errors = []
+
+        for i in range(len(opts)):
+            img2, jac = cv2.projectPoints(
+                opts[i], rvecs[i], tvecs[i], self.intrinsics, self.distortion)
+            for j in range(len(ipts[i])):
+                error = cv2.norm(ipts[i][j], numpy.array(
+                    img2[j]), cv2.NORM_L2)
+                errors.append(error)
+                x = int(numpy.floor(ipts[i][j][0, 0]/float(w)))
+                y = int(numpy.floor(ipts[i][j][0, 1]/float(h)))
+                if x > 0 and x < 20 and y > 0 and y < 20:
+                    if error > error_grid[y, x]:
+                        error_grid[y, x] = error
+
+        errors = numpy.array(errors)
+        iw2 = iw/20.0
+        ih2 = ih/20.0
+        for y in range(20):
+            for x in range(20):
+                err = error_grid[y, x]
+                cv2.rectangle(img, (int(x * iw), int(y * ih)), (int((x+1) * iw2),
+                                                                int((y+1) * ih2)), int(min(err / 5.0 * 255, 255)), -1)
+        img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        cv2.putText(img, 'ave_reprojection_error {:.2f} pixel'.format(numpy.average(errors)), (10, 30),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, 'std_reprojection_error {:.2f} pixel'.format(numpy.std(errors)), (10, 60),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.imshow("errors", img)
+
         # R is identity matrix for monocular calibration
         self.R = numpy.eye(3, dtype=numpy.float64)
         self.P = numpy.zeros((3, 4), dtype=numpy.float64)
@@ -730,6 +833,8 @@ class MonoCalibrator(Calibrator):
         """
         gray = self.mkgray(msg)
         linear_error = -1
+
+        self.image_shape = gray.shape
 
         # Get display-image-to-be (scrib) and detection of the calibration target
         scrib_mono, corners, downsampled_corners, board, (x_scale, y_scale) = self.downsample_and_detect(gray)
