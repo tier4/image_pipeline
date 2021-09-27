@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-from glob import glob
 
 PACKAGE_NAME = "camera_calibration"
 
@@ -9,10 +8,9 @@ setup(
     version='2.2.0',
     packages=["camera_calibration", "camera_calibration.nodes"],
     data_files=[
-        ('share/ament_index/resource_index/packages',
-         ['resource/' + PACKAGE_NAME]),
-        ('share/' + PACKAGE_NAME, ['package.xml']),
-        ('share/' + PACKAGE_NAME, glob('launch/*')),
+    ('share/ament_index/resource_index/packages',
+      ['resource/' + PACKAGE_NAME]),
+    ('share/' + PACKAGE_NAME, ['package.xml']),
     ],
     py_modules=[],
     package_dir={'': 'src'},
