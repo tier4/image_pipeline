@@ -38,6 +38,8 @@ import numpy
 import os
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile
 import sensor_msgs.msg
 import sensor_msgs.srv
 import threading
@@ -107,12 +109,19 @@ class CalibrationNode(Node):
         self._checkerboard_flags = checkerboard_flags
         self._pattern = pattern
         self._camera_name = camera_name
-        lsub = message_filters.Subscriber(self, sensor_msgs.msg.Image, 'left')
-        rsub = message_filters.Subscriber(self, sensor_msgs.msg.Image, 'right')
+
+        qos_profile = QoSProfile(depth=5)
+        qos_profile.reliability = QoSReliabilityPolicy.BEST_EFFORT
+
+        lsub = message_filters.Subscriber(
+            self, sensor_msgs.msg.Image, 'left', qos_profile=qos_profile)
+        rsub = message_filters.Subscriber(
+            self, sensor_msgs.msg.Image, 'right', qos_profile=qos_profile)
         ts = synchronizer([lsub, rsub], 4)
         ts.registerCallback(self.queue_stereo)
 
-        msub = message_filters.Subscriber(self, sensor_msgs.msg.Image, 'image')
+        msub = message_filters.Subscriber(
+            self, sensor_msgs.msg.Image, 'image', qos_profile=qos_profile)
         msub.registerCallback(self.queue_monocular)
 
         self.q_mono = deque([], 1)
