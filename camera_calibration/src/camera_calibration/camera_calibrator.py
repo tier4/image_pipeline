@@ -138,8 +138,6 @@ class CalibrationNode(Node):
         sth.setDaemon(True)
         sth.start()
 
-        self.handle_monocular_time = time.time()
-
     def redraw_stereo(self, *args):
         pass
     def redraw_monocular(self, *args):
@@ -153,8 +151,6 @@ class CalibrationNode(Node):
 
     def handle_monocular(self, msg):
         
-        print(f"Processing image: dt={time.time() - self.handle_monocular_time:.2f}", flush=True)
-        self.handle_monocular_time = time.time()
         if self.c == None:
             if self._camera_name:
                 self.c = MonoCalibrator(self._boards, self._calib_flags, self._pattern, name=self._camera_name,
