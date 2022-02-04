@@ -70,11 +70,12 @@ class ConsumerThread(threading.Thread):
         self.function = function
 
     def run(self):
+
         while True:
             # wait for an image (could happen at the very beginning when the queue is still empty)
             while len(self.queue) == 0:
-                time.sleep(0.1)
-            self.function(self.queue[0])
+                time.sleep(0.01)
+            self.function(self.queue.pop())
 
 
 class CalibrationNode(Node):
@@ -137,6 +138,8 @@ class CalibrationNode(Node):
         sth.setDaemon(True)
         sth.start()
 
+        self.handle_monocular_time = time.time()
+
     def redraw_stereo(self, *args):
         pass
     def redraw_monocular(self, *args):
@@ -149,6 +152,9 @@ class CalibrationNode(Node):
         self.q_stereo.append((lmsg, rmsg))
 
     def handle_monocular(self, msg):
+        
+        print(f"Processing image: dt={time.time() - self.handle_monocular_time:.2f}", flush=True)
+        self.handle_monocular_time = time.time()
         if self.c == None:
             if self._camera_name:
                 self.c = MonoCalibrator(self._boards, self._calib_flags, self._pattern, name=self._camera_name,
@@ -236,8 +242,19 @@ class OpenCVCalibrationNode(CalibrationNode):
             # wait for an image (could happen at the very beginning when the queue is still empty)
             while len(self.queue_display) == 0:
                 time.sleep(0.1)
+
+            occ_img = self.c.get_occ_image()
+            error_img = self.c.get_error_image()
+
+            if occ_img is not None:
+                cv2.imshow("occupied", occ_img)
+
+            if error_img is not None:
+                cv2.imshow("errors", error_img)
+
             im = self.queue_display[0]
             cv2.imshow("display", im)
+
             k = cv2.waitKey(6) & 0xFF
             if k in [27, ord('q')]:
                 rclpy.shutdown()
