@@ -43,10 +43,9 @@ import random
 import sensor_msgs.msg
 import tarfile
 import time
-import threading
-import rclpy
 import numpy as np
 from distutils.version import LooseVersion
+from collections import deque
 
 # Supported calibration patterns
 class Patterns:
@@ -282,17 +281,14 @@ class Calibrator():
         self.param_ranges = [0.7, 0.7, 0.4, 0.5]
         self.name = name
 
-        self.occ_image = None
-        self.error_image = None
-        self.lock = threading.RLock()
+        self.occ_image_queue = deque([None], 1)
+        self.error_image_queue = deque([None], 1)
 
     def get_occ_image(self):
-        with self.lock:
-            return None if self.occ_image is None else np.array(self.occ_image)
+        return self.occ_image_queue[0]
         
     def get_error_image(self):
-        with self.lock:
-            return None if self.error_image is None else np.array(self.error_image)
+        return self.error_image_queue[0]
 
     def mkgray(self, msg):
         """
@@ -387,8 +383,7 @@ class Calibrator():
         cv2.putText(img, "covered = {:3.1f}%".format(
             occupied*100), (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
 
-        with self.lock:
-            self.occ_image = img
+        self.occ_image_queue.append(img)
 
         # Find range of checkerboard poses covered by samples in database
         all_params = [sample[0] for sample in self.db]
@@ -734,8 +729,7 @@ class MonoCalibrator(Calibrator):
         cv2.putText(img, 'std_reprojection_error {:.2f} pixel'.format(numpy.std(errors)), (10, 60),
                     cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
         
-        with self.lock:
-            self.error_image = img
+        self.error_image_queue.append(img)
 
         # R is identity matrix for monocular calibration
         self.R = numpy.eye(3, dtype=numpy.float64)
