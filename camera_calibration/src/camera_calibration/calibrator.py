@@ -205,7 +205,7 @@ def _get_circles(img, board, pattern):
     # Setting blob detector
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
-    params.minArea = 500
+    params.minArea = 250
     params.maxArea = 30000
     params.minDistBetweenBlobs = 20
     params.filterByColor = True
@@ -762,9 +762,6 @@ class MonoCalibrator(Calibrator):
                     flags = self.fisheye_calib_flags)
             self.distortion = dist_coeffs.flat[:4].reshape(-1, 1) # Kannala-Brandt
 
-		# TODO: Kenzo exp section
-		self.distortion = np.reshape(self.distortion, (np.prod(self.distortion.shape), -1)) # (d, 1)
-
         aspect = self.size[1]/float(self.size[0])
         iw = 500
         ih = int(500*aspect)
@@ -802,7 +799,6 @@ class MonoCalibrator(Calibrator):
                     cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
         
         self.error_image_queue.append(img)
-		# End exp section
 
         # R is identity matrix for monocular calibration
         self.R = numpy.eye(3, dtype=numpy.float64)

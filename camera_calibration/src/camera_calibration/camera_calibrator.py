@@ -80,7 +80,7 @@ class ConsumerThread(threading.Thread):
 
 class CalibrationNode(Node):
     def __init__(self, name, boards, service_check = True, synchronizer = message_filters.TimeSynchronizer, flags = 0,
-                 pattern=Patterns.Chessboard, camera_name='', checkerboard_flags = 0,
+                 fisheye_flags = 0, pattern=Patterns.Chessboard, camera_name='', checkerboard_flags = 0,
                  max_chessboard_speed = -1):
         super().__init__(name)
 
@@ -112,7 +112,7 @@ class CalibrationNode(Node):
         self._checkerboard_flags = checkerboard_flags
         self._pattern = pattern
         self._camera_name = camera_name
-		self._max_chessboard_speed = max_chessboard_speed
+        self._max_chessboard_speed = max_chessboard_speed
 
         qos_profile = QoSProfile(depth=5)
         qos_profile.reliability = QoSReliabilityPolicy.BEST_EFFORT
