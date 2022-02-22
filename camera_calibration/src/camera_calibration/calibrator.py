@@ -44,6 +44,10 @@ import sensor_msgs.msg
 import tarfile
 import time
 import numpy as np
+import sys
+from distutils.version import LooseVersion
+from enum import Enum
+from collections import deque
 
 # Supported camera models
 class CAMERA_MODEL(Enum):
