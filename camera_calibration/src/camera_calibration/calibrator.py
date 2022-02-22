@@ -44,10 +44,6 @@ import sensor_msgs.msg
 import tarfile
 import time
 import numpy as np
-import sys
-from distutils.version import LooseVersion
-from enum import Enum
-from collections import deque
 
 # Supported camera models
 class CAMERA_MODEL(Enum):
@@ -303,6 +299,15 @@ class Calibrator():
         self.name = name
         self.last_frame_corners = None
         self.max_chessboard_speed = max_chessboard_speed
+
+        self.occ_image_queue = deque([None], 1)
+        self.error_image_queue = deque([None], 1)
+
+    def get_occ_image(self):
+        return self.occ_image_queue[0]
+        
+    def get_error_image(self):
+        return self.error_image_queue[0]
 
         self.occ_image_queue = deque([None], 1)
         self.error_image_queue = deque([None], 1)
@@ -732,6 +737,7 @@ class MonoCalibrator(Calibrator):
         ipts = [ points for (points, _) in good ]
         opts = self.mk_object_points(boards)
         # If FIX_ASPECT_RATIO flag set, enforce focal lengths have 1/1 ratio
+
         intrinsics_in = numpy.eye(3, dtype=numpy.float64)
 
         if self.camera_model == CAMERA_MODEL.PINHOLE:
