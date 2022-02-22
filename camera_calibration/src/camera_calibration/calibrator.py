@@ -43,8 +43,9 @@ import random
 import sensor_msgs.msg
 import tarfile
 import time
+import numpy as np
 from distutils.version import LooseVersion
-
+from collections import deque
 
 # Supported calibration patterns
 class Patterns:
@@ -280,6 +281,15 @@ class Calibrator():
         self.param_ranges = [0.7, 0.7, 0.4, 0.5]
         self.name = name
 
+        self.occ_image_queue = deque([None], 1)
+        self.error_image_queue = deque([None], 1)
+
+    def get_occ_image(self):
+        return self.occ_image_queue[0]
+        
+    def get_error_image(self):
+        return self.error_image_queue[0]
+
     def mkgray(self, msg):
         """
         Convert a message into a 8-bit 1 channel monochrome OpenCV image
@@ -363,7 +373,8 @@ class Calibrator():
         for y in range(grid.shape[0]):
             for x in range(grid.shape[1]):
                 cv2.rectangle(img, (int(x*img_width*cell_size), int(y*img_height*cell_size)),
-                              (int((x+1)*img_width*cell_size), int((y+1)*img_height*cell_size)), min(255, grid[y, x]*20), -1)
+                              (int((x+1)*img_width*cell_size), int((y+1)*img_height*cell_size)), 
+                              int(min(255, grid[y, x]*20)), -1)
         img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
         for sample in self.good_corners:
             for p in sample[0]:
@@ -371,7 +382,8 @@ class Calibrator():
                                  int(p[0, 1]/float(image_height)*img_height)), 2, (0, 0, 0), -1)
         cv2.putText(img, "covered = {:3.1f}%".format(
             occupied*100), (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.imshow("occupied", img)
+
+        self.occ_image_queue.append(img)
 
         # Find range of checkerboard poses covered by samples in database
         all_params = [sample[0] for sample in self.db]
@@ -674,11 +686,12 @@ class MonoCalibrator(Calibrator):
         # If FIX_ASPECT_RATIO flag set, enforce focal lengths have 1/1 ratio
         self.intrinsics[0,0] = 1.0
         self.intrinsics[1,1] = 1.0
-        cv2.calibrateCamera(
-                   opts, ipts,
-                   self.size, self.intrinsics,
-                   self.distortion,
-                   flags = self.calib_flags)
+
+
+        ret, self.intrinsics, self.distortion, rvecs, tvecs = cv2.calibrateCamera(
+            opts, ipts, self.size, None, None, flags = self.calib_flags)
+
+        self.distortion = np.reshape(self.distortion, (np.prod(self.distortion.shape), -1)) # (d, 1)
 
         aspect = self.size[1]/float(self.size[0])
         iw = 500
@@ -715,7 +728,8 @@ class MonoCalibrator(Calibrator):
                     cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(img, 'std_reprojection_error {:.2f} pixel'.format(numpy.std(errors)), (10, 60),
                     cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.imshow("errors", img)
+        
+        self.error_image_queue.append(img)
 
         # R is identity matrix for monocular calibration
         self.R = numpy.eye(3, dtype=numpy.float64)
