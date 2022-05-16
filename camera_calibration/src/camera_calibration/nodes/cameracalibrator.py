@@ -52,7 +52,7 @@ def main():
                         "You must specify one or more chessboards as pairs of --size and --square options.")
     group.add_option("-p", "--pattern",
                      type="string", default="chessboard",
-                     help="calibration pattern to detect - 'chessboard', 'circles', 'acircles'")
+                     help="calibration pattern to detect - 'chessboard', 'circles', 'acircles', 'apriltag'")
     group.add_option("-s", "--size",
                      action="append", default=[],
                      help="chessboard size as NxM, counting interior corners (e.g. a standard chessboard is 7x7)")
@@ -106,12 +106,26 @@ def main():
     parser.add_option_group(group)
     options, _ = parser.parse_args(rclpy.utilities.remove_ros_args())
 
+    pattern = Patterns.Chessboard
+    if options.pattern == 'circles':
+        pattern = Patterns.Circles
+    elif options.pattern == 'acircles':
+        pattern = Patterns.ACircles
+    elif options.pattern == 'apriltag':
+        pattern = Patterns.Apriltag
+    elif options.pattern != 'chessboard':
+        print('Unrecognized pattern %s, defaulting to chessboard' % options.pattern)
+
     if len(options.size) != len(options.square):
         parser.error("Number of size and square inputs must be the same!")
 
     if not options.square:
         options.square.append("0.108")
         options.size.append("8x6")
+
+    if pattern == Patterns.Apriltag:
+        options.square = ["0.5"]
+        options.size = ["2x2"]
 
     boards = []
     for (sz, sq) in zip(options.size, options.square):
@@ -166,14 +180,6 @@ def main():
         fisheye_calib_flags |= cv2.fisheye.CALIB_FIX_K2
     if (num_ks < 1):
         fisheye_calib_flags |= cv2.fisheye.CALIB_FIX_K1
-
-    pattern = Patterns.Chessboard
-    if options.pattern == 'circles':
-        pattern = Patterns.Circles
-    elif options.pattern == 'acircles':
-        pattern = Patterns.ACircles
-    elif options.pattern != 'chessboard':
-        print('Unrecognized pattern %s, defaulting to chessboard' % options.pattern)
 
     if options.disable_calib_cb_fast_check:
         checkerboard_flags = 0

@@ -48,6 +48,7 @@ import sys
 from distutils.version import LooseVersion
 from enum import Enum
 from collections import deque
+from dt_apriltags import Detector as ApriltagDetector
 
 # Supported camera models
 class CAMERA_MODEL(Enum):
@@ -56,7 +57,7 @@ class CAMERA_MODEL(Enum):
 
 # Supported calibration patterns
 class Patterns:
-    Chessboard, Circles, ACircles = list(range(3))
+    Chessboard, Circles, ACircles, Apriltag = list(range(4))
 
 class CalibrationException(Exception):
     pass
@@ -202,6 +203,10 @@ def _get_circles(img, board, pattern):
     else:
         mono = img
 
+    #mono = cv2.equalizeHist(mono) # for when the image is too dark
+    #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
+    #mono = clahe.apply(mono)
+
     # Setting blob detector
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
@@ -231,24 +236,37 @@ def _get_circles(img, board, pattern):
     #     mono, keypoints, numpy.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     # cv2.imshow("blob", mono_with_keypoints)
 
-
-    flag = cv2.CALIB_CB_SYMMETRIC_GRID
-    if pattern == Patterns.ACircles:
-        flag = cv2.CALIB_CB_ASYMMETRIC_GRID
-    mono_arr = numpy.array(mono)
-    (ok, corners) = cv2.findCirclesGrid(
-        mono_arr, (board.n_cols, board.n_rows), flags=flag, blobDetector=detector)
-
-    # In symmetric case, findCirclesGrid does not detect the target if it's turned sideways. So we try
-    # again with dimensions swapped - not so efficient.
-    # TODO Better to add as second board? Corner ordering will change.
-    if not ok and pattern == Patterns.Circles:
+    if pattern == Patterns.Apriltag:
+        raise NotImplementedError
+    else:
+        flag = cv2.CALIB_CB_SYMMETRIC_GRID
+        if pattern == Patterns.ACircles:
+            flag = cv2.CALIB_CB_ASYMMETRIC_GRID
+        mono_arr = numpy.array(mono)
         (ok, corners) = cv2.findCirclesGrid(
-            mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
+            mono_arr, (board.n_cols, board.n_rows), flags=flag, blobDetector=detector)
+
+        # In symmetric case, findCirclesGrid does not detect the target if it's turned sideways. So we try
+        # again with dimensions swapped - not so efficient.
+        # TODO Better to add as second board? Corner ordering will change.
+        if not ok and pattern == Patterns.Circles:
+            (ok, corners) = cv2.findCirclesGrid(
+                mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
 
     if ok:
         # Re-scaling results
         corners = corners * (1. / scale )
+
+    return (ok, corners)
+
+def _get_apriltag_corners(img, detector):
+
+    tags = detector.detect(img)
+
+    corners = [tag.corners for tag in tags if tag.hamming == 0 and tag.decision_margin > 20.0]
+
+    ok = len(corners) > 0
+    corners = corners[0].reshape(-1, 1, 2).astype(np.float32) if ok else None
 
     return (ok, corners)
 
@@ -281,6 +299,15 @@ class Calibrator():
             self._boards = [ChessboardInfo(min(i.n_cols, i.n_rows), max(i.n_cols, i.n_rows), i.dim) for i in boards]
         elif pattern == Patterns.Circles:
             # We end up having to check both ways anyway
+            self._boards = boards
+        elif pattern == Patterns.Apriltag:
+            self.apriltag_detector = ApriltagDetector(families='tag16h5',
+                nthreads=1,
+                quad_decimate=1.0,
+                quad_sigma=0.0,
+                refine_edges=1,
+                decode_sharpening=0.25,
+                debug=0)
             self._boards = boards
 
         # Set to true after we perform calibration
@@ -394,7 +421,7 @@ class Calibrator():
         d = min([param_distance(params, p) for p in db_params])
         #print "d = %.3f" % d #DEBUG
         # TODO What's a good threshold here? Should it be configurable?
-        if d <= 0.2:
+        if d <= 0.1:
             return False
 
         if self.max_chessboard_speed > 0:
@@ -456,12 +483,19 @@ class Calibrator():
         progress = [min((hi - lo) / r, 1.0) for (lo, hi, r) in zip(min_params, max_params, self.param_ranges)]
         # If we have lots of samples, allow calibration even if not all parameters are green
         # TODO Awkward that we update self.goodenough instead of returning it
-        self.goodenough = (len(self.db) >= 40) or all([p == 1.0 for p in progress])
+        self.goodenough = (len(self.db) >= 10) or all([p == 1.0 for p in progress])
 
         return list(zip(self._param_names, min_params, max_params, progress))
 
     def mk_object_points(self, boards, use_board_size = False):
         opts = []
+
+        if self.pattern == Patterns.Apriltag:
+            opts_loc = np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], dtype=np.float32).reshape(4, 1, 3)
+
+            opts = [opts_loc for _ in boards]
+            return opts
+
         for i, b in enumerate(boards):
             num_pts = b.n_cols * b.n_rows
             opts_loc = numpy.zeros((num_pts, 1, 3), numpy.float32)
@@ -490,6 +524,8 @@ class Calibrator():
         for b in self._boards:
             if self.pattern == Patterns.Chessboard:
                 (ok, corners) = _get_corners(img, b, refine, self.checkerboard_flags)
+            elif self.pattern == Patterns.Apriltag:
+                (ok, corners) = _get_apriltag_corners(img, self.apriltag_detector)
             else:
                 (ok, corners) = _get_circles(img, b, self.pattern)
             if ok:

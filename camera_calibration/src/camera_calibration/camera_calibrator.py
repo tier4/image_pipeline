@@ -351,7 +351,7 @@ class OpenCVCalibrationNode(CalibrationNode):
 
         else:
             self.putText(display, "lin.", (width, self.y(0)))
-            linerror = drawable.linear_error
+            linerror = drawable.linear_error if drawable.linear_error is not None else -1 
             if linerror < 0:
                 msg = "?"
             else:
