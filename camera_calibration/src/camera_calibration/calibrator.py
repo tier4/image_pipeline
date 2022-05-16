@@ -246,6 +246,11 @@ def _get_circles(img, board, pattern):
         (ok, corners) = cv2.findCirclesGrid(
             mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
 
+        if ok:
+            corners = corners.reshape((board.n_cols, board.n_rows, 2))
+            corners = np.transpose(corners, (1, 0, 2))
+            corners = corners.reshape(-1, 1, 2)
+
     if ok:
         # Re-scaling results
         corners = corners * (1. / scale )
