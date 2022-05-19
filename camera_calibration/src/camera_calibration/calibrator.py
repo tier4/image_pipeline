@@ -203,10 +203,6 @@ def _get_circles(img, board, pattern):
     else:
         mono = img
 
-    #mono = cv2.equalizeHist(mono) # for when the image is too dark
-    #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
-    #mono = clahe.apply(mono)
-
     # Setting blob detector
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
