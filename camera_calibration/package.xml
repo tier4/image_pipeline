@@ -20,6 +20,7 @@
   <author>Patrick Mihelich</author>
 
   <depend>cv_bridge</depend>
+  <depend>python-dt-apriltags-pip</depend>
   <depend>image_geometry</depend>
   <depend>message_filters</depend>
   <depend>rclpy</depend>
