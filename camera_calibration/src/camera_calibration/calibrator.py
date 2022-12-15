@@ -209,19 +209,21 @@ def _get_circles(img, board, pattern):
     params.minArea = 250
     params.maxArea = 30000
     params.minDistBetweenBlobs = 20
-    params.filterByColor = True
-    params.blobColor = 0
-    params.filterByConvexity = False
-    params.minCircularity = 0.1
-    params.filterByInertia = True
-    params.minInertiaRatio = 0.01
+    #params.filterByConvexity = False
+    #params.minCircularity = 0.1
+    #params.filterByInertia = True
+    #params.minInertiaRatio = 0.01
+
+    
+
     detector = cv2.SimpleBlobDetector_create(params)
 
     # Scaling for high-resolution image
     # NOTE: CirclesGridFinderParameters cannot be modified in OpenCV 3.x
     scale = 1.0
     width = mono.shape[1]
-    max_width = 1440.
+
+    max_width = 2800.
     if width > max_width:
         scale = max_width / width
         mono = cv2.resize(mono, None, fx=scale, fy=scale)
@@ -235,7 +237,8 @@ def _get_circles(img, board, pattern):
     if pattern == Patterns.Apriltag:
         raise NotImplementedError
     else:
-        flag = cv2.CALIB_CB_SYMMETRIC_GRID
+        flag = cv2.CALIB_CB_SYMMETRIC_GRID | cv2.CALIB_CB_CLUSTERING
+        #flag = cv2.CALIB_CB_SYMMETRIC_GRID
         if pattern == Patterns.ACircles:
             flag = cv2.CALIB_CB_ASYMMETRIC_GRID
         mono_arr = numpy.array(mono)
@@ -249,11 +252,11 @@ def _get_circles(img, board, pattern):
             (ok, corners) = cv2.findCirclesGrid(
                 mono_arr, (board.n_rows, board.n_cols), flags=flag, blobDetector=detector)
 
-        # We need to swap the axes of the detections back to make it consistent
-        if ok:
-            corners_2d_array = corners.reshape((board.n_cols, board.n_rows, 2))
-            corners_transposed = np.transpose(corners_2d_array, (1, 0, 2))
-            corners = corners_transposed.reshape(-1, 1, 2)
+            # We need to swap the axes of the detections back to make it consistent
+            if ok:
+                corners_2d_array = corners.reshape((board.n_cols, board.n_rows, 2))
+                corners_transposed = np.transpose(corners_2d_array, (1, 0, 2))
+                corners = corners_transposed.reshape(-1, 1, 2)
 
     if ok:
         # Re-scaling results
