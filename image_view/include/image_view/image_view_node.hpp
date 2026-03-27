@@ -16,7 +16,11 @@
 #define IMAGE_VIEW__IMAGE_VIEW_NODE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+#ifdef ROS_DISTRO_HUMBLE
 #include <cv_bridge/cv_bridge.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
+#endif
 #include <sensor_msgs/msg/image.hpp>
 #include <image_transport/image_transport.hpp>
 
