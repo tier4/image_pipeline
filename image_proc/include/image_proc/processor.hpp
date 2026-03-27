@@ -33,18 +33,20 @@
 #ifndef IMAGE_PROC__PROCESSOR_HPP_
 #define IMAGE_PROC__PROCESSOR_HPP_
 
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#endif
 #include <sensor_msgs/msg/image.hpp>
 
 #include <opencv2/core/core.hpp>
 
 #include <string>
 
-namespace image_proc
-{
+namespace image_proc {
 
-struct ImageSet
-{
+struct ImageSet {
   std::string color_encoding;
   cv::Mat mono;
   cv::Mat rect;
@@ -52,31 +54,25 @@ struct ImageSet
   cv::Mat rect_color;
 };
 
-class Processor
-{
+class Processor {
 public:
-  Processor()
-  : interpolation_(cv::INTER_LINEAR)
-  {
-  }
+  Processor() : interpolation_(cv::INTER_LINEAR) {}
 
   int interpolation_;
 
-  enum
-  {
-    MONO       = 1 << 0,
-    RECT       = 1 << 1,
-    COLOR      = 1 << 2,
+  enum {
+    MONO = 1 << 0,
+    RECT = 1 << 1,
+    COLOR = 1 << 2,
     RECT_COLOR = 1 << 3,
     ALL = MONO | RECT | COLOR | RECT_COLOR
   };
 
-  bool process(
-    const sensor_msgs::msg::Image::ConstSharedPtr & raw_image,
-    const image_geometry::PinholeCameraModel & model,
-    ImageSet & output, int flags = ALL) const;
+  bool process(const sensor_msgs::msg::Image::ConstSharedPtr &raw_image,
+               const image_geometry::PinholeCameraModel &model,
+               ImageSet &output, int flags = ALL) const;
 };
 
-}  // namespace image_proc
+} // namespace image_proc
 
-#endif  // IMAGE_PROC__PROCESSOR_HPP_
+#endif // IMAGE_PROC__PROCESSOR_HPP_

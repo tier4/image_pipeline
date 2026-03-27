@@ -32,7 +32,11 @@
 
 #include <opencv2/imgproc/imgproc.hpp>
 
+#ifdef ROS_DISTRO_HUMBLE
 #include <cv_bridge/cv_bridge.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
+#endif
 #include <sensor_msgs/image_encodings.hpp>
 
 #include <string>
