@@ -33,7 +33,11 @@
 #ifndef IMAGE_PROC__CROP_NON_ZERO_HPP_
 #define IMAGE_PROC__CROP_NON_ZERO_HPP_
 
+#ifdef ROS_DISTRO_HUMBLE
 #include <cv_bridge/cv_bridge.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
+#endif
 #include <image_transport/image_transport.hpp>
 #include <rclcpp/rclcpp.hpp>
 

@@ -31,8 +31,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include <rclcpp/rclcpp.hpp>
-#include <cv_bridge/cv_bridge.h>
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
+#include <cv_bridge/cv_bridge.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#include <cv_bridge/cv_bridge.hpp>
+#endif
 #include <image_transport/image_transport.hpp>
 
 #include <thread>
