@@ -31,8 +31,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 #include <stereo_image_proc/stereo_processor.hpp>
 
+#ifdef ROS_DISTRO_HUMBLE
 #include <cv_bridge/cv_bridge.h>
 #include <image_geometry/stereo_camera_model.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
+#include <image_geometry/stereo_camera_model.hpp>
+#endif
 #include <image_transport/image_transport.hpp>
 #include <image_transport/subscriber_filter.hpp>
 #include <message_filters/subscriber.h>

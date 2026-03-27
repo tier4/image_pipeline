@@ -29,7 +29,11 @@
 // LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 // ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/stereo_camera_model.h>
+#else
+#include <image_geometry/stereo_camera_model.hpp>
+#endif
 #include <image_transport/image_transport.hpp>
 #include <image_transport/subscriber_filter.hpp>
 #include <message_filters/subscriber.h>

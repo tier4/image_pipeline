@@ -32,7 +32,11 @@
 #ifndef STEREO_IMAGE_PROC__STEREO_PROCESSOR_HPP_
 #define STEREO_IMAGE_PROC__STEREO_PROCESSOR_HPP_
 
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/stereo_camera_model.h>
+#else
+#include <image_geometry/stereo_camera_model.hpp>
+#endif
 #include <image_proc/processor.hpp>
 #include <sensor_msgs/msg/point_cloud.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
