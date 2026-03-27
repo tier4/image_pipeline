@@ -37,7 +37,11 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#endif
 #include <depth_image_proc/depth_traits.hpp>
 #include <depth_image_proc/conversions.hpp>
 #include <depth_image_proc/visibility.h>

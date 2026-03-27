@@ -33,7 +33,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include <image_transport/image_transport.hpp>
 #include <sensor_msgs/image_encodings.hpp>
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#endif
 #include <depth_image_proc/conversions.hpp>
 #include <depth_image_proc/visibility.h>
 

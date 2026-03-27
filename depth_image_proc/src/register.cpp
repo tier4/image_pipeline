@@ -38,9 +38,14 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <sensor_msgs/image_encodings.hpp>
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
-#include <Eigen/Geometry>
 #include <tf2_eigen/tf2_eigen.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
+#endif
+#include <Eigen/Geometry>
 #include <depth_image_proc/depth_traits.hpp>
 #include <depth_image_proc/visibility.h>
 #include <memory>

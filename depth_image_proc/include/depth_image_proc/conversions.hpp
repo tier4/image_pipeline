@@ -34,7 +34,11 @@
 
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#ifdef ROS_DISTRO_HUMBLE
 #include <image_geometry/pinhole_camera_model.h>
+#else
+#include <image_geometry/pinhole_camera_model.hpp>
+#endif
 #include <depth_image_proc/depth_traits.hpp>
 
 #include <limits>
